@@ -46,6 +46,11 @@ class Services:
     tickets: TicketService
 
 
+def _t(state: AgentState, node: str) -> list[str]:
+    """Append a node name to this turn's trace."""
+    return [*(state.get("trace") or []), node]
+
+
 def _history(state: AgentState) -> list[BaseMessage]:
     """Previous turns only (the current human message is re-added by each node with its own context)."""
     msgs = [m for m in state.get("messages", []) if isinstance(m, (HumanMessage, AIMessage))]
@@ -124,7 +129,11 @@ def build_nodes(svc: Services) -> dict[str, Node]:
             log.warning(
                 "guard.blocked", category=decision["category"], score=h.score, by=decision["decided_by"]
             )
-        return {"guard": decision, "route": "blocked" if decision["blocked"] else "", "trace": ["guard"]}
+        return {
+            "guard": decision,
+            "route": "blocked" if decision["blocked"] else "",
+            "trace": _t(state, "guard"),
+        }
 
     # ---- 2. router -----------------------------------------------------------------------------
     async def router(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
@@ -146,7 +155,7 @@ def build_nodes(svc: Services) -> dict[str, Node]:
             )
         intent = decision.intent if decision.confidence >= 0.4 else "knowledge"
         log.info("router.decided", intent=intent, confidence=decision.confidence, reason=decision.reason)
-        return {"route": intent, "route_confidence": decision.confidence, "trace": ["router"]}
+        return {"route": intent, "route_confidence": decision.confidence, "trace": _t(state, "router")}
 
     # ---- 3a. knowledge agent (RAG) --------------------------------------------------------------
     async def knowledge(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
@@ -182,7 +191,12 @@ def build_nodes(svc: Services) -> dict[str, Node]:
             docs=len(relevant),
             prompt=prompt_version("knowledge_agent"),
         )
-        return {"draft": ai.content, "retrieved": retrieved, "attempts": attempts + 1, "trace": ["knowledge"]}
+        return {
+            "draft": ai.content,
+            "retrieved": retrieved,
+            "attempts": attempts + 1,
+            "trace": _t(state, "knowledge"),
+        }
 
     # ---- 3b. verifier (LLM-as-judge inside the loop) ---------------------------------------------
     async def verifier(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
@@ -190,7 +204,7 @@ def build_nodes(svc: Services) -> dict[str, Node]:
         if not relevant:
             return {
                 "verdict": {"grounded": True, "score": 1.0, "skipped": "no documents"},
-                "trace": ["verifier"],
+                "trace": _t(state, "verifier"),
             }
         human = (
             f"Customer question: {state['user_input']}\n\n{render_documents(relevant)}\n\n"
@@ -208,12 +222,12 @@ def build_nodes(svc: Services) -> dict[str, Node]:
             log.warning("verifier.fallback", error=str(exc)[:200])
             return {
                 "verdict": {"grounded": True, "score": 0.0, "skipped": "verifier unavailable"},
-                "trace": ["verifier"],
+                "trace": _t(state, "verifier"),
             }
         log.info(
             "verifier.verdict", grounded=verdict.grounded, score=verdict.score, attempts=state.get("attempts")
         )
-        return {"verdict": verdict.model_dump(), "trace": ["verifier"]}
+        return {"verdict": verdict.model_dump(), "trace": _t(state, "verifier")}
 
     # ---- 3c. order agent (bounded tool loop) -----------------------------------------------------
     async def order(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
@@ -256,7 +270,7 @@ def build_nodes(svc: Services) -> dict[str, Node]:
             if isinstance(ai.content, str)
             else "".join(b.get("text", "") for b in ai.content if isinstance(b, dict))
         )
-        return {"draft": text, "trace": ["order"]}
+        return {"draft": text, "trace": _t(state, "order")}
 
     # ---- 3d. escalation --------------------------------------------------------------------------
     async def escalate(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
@@ -291,7 +305,7 @@ def build_nodes(svc: Services) -> dict[str, Node]:
             f"{' at ' + state['customer_email'] if state.get('customer_email') else ''}."
         )
         log.info("escalate.ticket", ticket=ticket_id, priority=summary.priority)
-        return {"draft": draft, "ticket_id": ticket_id, "trace": ["escalate"]}
+        return {"draft": draft, "ticket_id": ticket_id, "trace": _t(state, "escalate")}
 
     # ---- 3e. small talk --------------------------------------------------------------------------
     async def smalltalk(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
@@ -299,11 +313,11 @@ def build_nodes(svc: Services) -> dict[str, Node]:
             [SystemMessage(load_prompt("smalltalk")), *_history(state), HumanMessage(state["user_input"])],
             _tagged(config, "answer"),
         )
-        return {"draft": ai.content, "trace": ["smalltalk"]}
+        return {"draft": ai.content, "trace": _t(state, "smalltalk")}
 
     # ---- 3f. blocked -----------------------------------------------------------------------------
     async def blocked(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
-        return {"draft": BLOCKED_REPLY, "trace": ["blocked"]}
+        return {"draft": BLOCKED_REPLY, "trace": _t(state, "blocked")}
 
     # ---- 4. finalize (output guard + citation mapping) -----------------------------------------
     async def finalize(state: AgentState, config: RunnableConfig) -> dict[str, Any]:
@@ -329,7 +343,7 @@ def build_nodes(svc: Services) -> dict[str, Node]:
             "final_answer": verdict.text,
             "citations": citations,
             "messages": [AIMessage(content=verdict.text)],
-            "trace": ["finalize"],
+            "trace": _t(state, "finalize"),
         }
 
     return {

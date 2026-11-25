@@ -17,9 +17,10 @@ Paired with it: an in-memory hybrid index (hashed bag-of-words vectors plus BM25
 | Unit: graph | 8 | nothing | grounded cited answer and trace; verifier retry removes the unsupported claim and the invalid citation; injection blocked before routing; order lookup with verified email; refusal of another customer's order; escalation creates a high-priority ticket; small talk plus memory across turns (human, ai, human, ai in the checkpoint); streaming emits status, tokens and done |
 | Unit: API | 6 | nothing | health and readiness; 401 and 403 rules; chat round trip with conversation continuity and request id header; SSE event order; voice round trip; validation errors |
 | Unit: evals | 1 | nothing | the harness runs end to end and writes a report with prompt hashes; routing accuracy and false-positive assertions |
+| Unit: fallbacks | 3 | nothing | a model that never returns valid structured output: router defaults to knowledge and the verifier is skipped; the guard fails closed on the uncertain band; escalation still files a ticket |
 | Integration | 3 | Postgres with pgvector | migrations apply; ingestion is idempotent and quarantines; the hybrid SQL returns the right document with both legs populated; a two-turn conversation persists a transcript and a four-message checkpoint, including an order lookup through the real repository |
 
-Thirty tests, about two seconds for the unit suite, about three for the integration suite. CI runs both plus the offline eval on every push.
+Thirty-three tests, about four seconds for the unit suite, about three for the integration suite. CI runs both plus the offline eval on every push.
 
 ## Gaps I am aware of
 

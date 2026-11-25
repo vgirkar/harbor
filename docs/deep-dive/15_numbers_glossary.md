@@ -4,7 +4,7 @@
 
 | What | Value |
 |---|---|
-| Code | about 4,600 lines of Python, 9 packages, 10 prompts, 30 tests (27 unit, 3 integration) |
+| Code | about 4,900 lines of Python, 9 packages, 10 prompts, 33 tests (30 unit, 3 integration) |
 | Knowledge base | 8 documents, about 3,100 words, 42 chunks, about 97 tokens per chunk on average |
 | Chunking | H1 to H3 splits, 450 token target, 60 token overlap, 4 characters per token |
 | Embeddings | voyage-3.5, 1,024 dimensions, or local bge-small, 384 dimensions; batches of 32 at ingestion |

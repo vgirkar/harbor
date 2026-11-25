@@ -64,6 +64,13 @@ async def test_smalltalk_and_conversation_memory(container):
         message="Do you accept Klarna?", conversation_id=first.conversation_id
     )
     assert second.conversation_id == first.conversation_id and second.intent == "knowledge"
+    assert second.trace == [
+        "guard",
+        "router",
+        "knowledge",
+        "verifier",
+        "finalize",
+    ]  # per turn, not cumulative
     snapshot = await container.runtime._graph.aget_state(
         {"configurable": {"thread_id": first.conversation_id}}
     )

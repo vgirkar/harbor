@@ -8,7 +8,6 @@ from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from harbor import __version__
@@ -61,11 +60,9 @@ def create_app(
         app.include_router(r)
 
     if STATIC_DIR.exists():
-        app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
-
-        @app.get("/", include_in_schema=False)
-        async def index() -> FileResponse:
-            return FileResponse(STATIC_DIR / "index.html")
+        # Mounted last so API routes win; html=True serves index.html at "/" and app.css / app.js next to it,
+        # the same relative layout Netlify serves from the static folder.
+        app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
 
     return app
 

@@ -3,7 +3,6 @@ else is scratch for the current turn."""
 
 from __future__ import annotations
 
-import operator
 from typing import Annotated, Any, TypedDict
 
 from langchain_core.messages import BaseMessage
@@ -25,4 +24,4 @@ class AgentState(TypedDict, total=False):
     final_answer: str
     citations: list[dict[str, Any]]
     ticket_id: str | None
-    trace: Annotated[list[str], operator.add]
+    trace: list[str]  # node names visited in this turn; reset by the runtime at every turn

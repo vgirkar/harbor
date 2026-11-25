@@ -20,7 +20,7 @@ Harbor is a customer support assistant for an online outdoor gear store, and it 
 | Repository | github.com/vgirkar/harbor (public, MIT), featured on vgirkar.netlify.app; demo page at harbor-support.netlify.app |
 | Domain | Customer support for a fictional store, Harbor Outfitters: 8 policy documents, 3 customers, 6 orders |
 | Core stack | Python 3.11+, FastAPI, LangGraph 1.2, LangChain 1.5, Claude (Opus 5.5, Sonnet 5.5, Haiku 4.5) or any OpenAI-compatible endpoint (Groq, Gemini, Ollama), Voyage AI or local fastembed embeddings and reranker, Postgres 17 with pgvector, Pinecone adapter, ElevenLabs or OpenAI speech, Ragas 0.4 |
-| Size | about 4,600 lines of Python across 9 packages, 10 versioned prompts, 30 automated tests, 1 Alembic migration |
+| Size | about 4,900 lines of Python across 9 packages, 10 versioned prompts, 33 automated tests, 1 Alembic migration |
 | Agents | guard, router, knowledge agent, verifier, order agent, escalation agent, small talk, finalizer |
 | Retrieval | dense top 20 + lexical top 20, RRF with k = 60, 24 candidates reranked to 6, relevance gate 0.15 |
 | Defence | 19 heuristic rules, LLM classifier on the uncertain band, ingestion quarantine, spotlighting, output guard with canary |

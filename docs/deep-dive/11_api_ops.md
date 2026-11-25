@@ -46,6 +46,7 @@ Netlify hosts the demo page (https://harbor-support.netlify.app): a static site 
 | Failure | Behaviour |
 |---|---|
 | Model API transient error | SDK retries 3 times with backoff; then 500 with the request id |
+| Invalid structured output (empty tool call, malformed JSON) | one retry with a corrective note, then the node's safe default (router: knowledge; verifier: skip; summary: raw text; guard: heuristics decide) |
 | Speech API error | tenacity retries 3 times; then 5xx |
 | Database down | readiness 503; requests fail fast through `pool_pre_ping` |
 | Pinecone down | dense leg errors; readiness check reports the index |

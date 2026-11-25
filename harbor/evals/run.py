@@ -181,7 +181,7 @@ def _models_used(c: Container) -> dict[str, str]:
     }
 
 
-async def rescore_ragas(c: Container, report_dir: Path) -> dict[str, Any]:
+async def rescore_ragas(c: Container, report_dir: Path, limit: int | None = None) -> dict[str, Any]:
     """Compute (or recompute) the Ragas metrics for an existing report from its saved answers and contexts, so a
     failed or skipped Ragas pass never costs a full regeneration run."""
     from harbor.evals.ragas_eval import ragas_scores
@@ -192,9 +192,10 @@ async def rescore_ragas(c: Container, report_dir: Path) -> dict[str, Any]:
         for line in (report_dir / "golden_rows.jsonl").read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
-    rows = [r for r in rows if r.get("answer")]
+    scored = [r for r in rows if r.get("answer") and r.get("contexts")][:limit]
     summary = json.loads((report_dir / "summary.json").read_text(encoding="utf-8"))
-    summary["ragas"] = await ragas_scores(c.settings, build_embeddings(c.settings), rows)
+    summary["ragas"] = await ragas_scores(c.settings, build_embeddings(c.settings), scored)
+    summary["ragas_items"] = len(scored)
     summary["ragas_models"] = _models_used(c)
     (report_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     (report_dir / "golden_rows.jsonl").write_text(
@@ -224,7 +225,9 @@ async def run_eval(
         from harbor.evals.ragas_eval import ragas_scores
         from harbor.retrieval.embeddings import build_embeddings
 
-        summary["ragas"] = await ragas_scores(c.settings, build_embeddings(c.settings), rows)
+        scorable = [r for r in rows if r.get("answer") and r.get("contexts")]
+        summary["ragas"] = await ragas_scores(c.settings, build_embeddings(c.settings), scorable)
+        summary["ragas_items"] = len(scorable)
     if use_redteam:
         red = await run_redteam(c)
         summary["redteam"] = {k: v for k, v in red.items() if k != "rows"}

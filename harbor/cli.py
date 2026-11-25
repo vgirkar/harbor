@@ -135,7 +135,7 @@ def eval_cmd(
 
 
 @app.command()
-def rescore(report_dir: Path, offline: bool = False) -> None:
+def rescore(report_dir: Path, offline: bool = False, limit: int | None = None) -> None:
     """Recompute the Ragas metrics of an existing eval report from its saved answers and contexts."""
     from harbor.evals.run import rescore_ragas
 
@@ -143,7 +143,7 @@ def rescore(report_dir: Path, offline: bool = False) -> None:
         settings = get_settings()
         c = build_offline_container(settings) if offline else await build_container(settings)
         try:
-            typer.echo(json.dumps(await rescore_ragas(c, report_dir), indent=2))
+            typer.echo(json.dumps(await rescore_ragas(c, report_dir, limit=limit), indent=2))
         finally:
             await c.close()
 

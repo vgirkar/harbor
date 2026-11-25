@@ -1,0 +1,27 @@
+{
+  "customers": [
+    {"email": "maya.lindqvist@example.com", "name": "Maya Lindqvist"},
+    {"email": "tom.okafor@example.com", "name": "Tom Okafor"},
+    {"email": "sofia.ruiz@example.com", "name": "Sofia Ruiz"}
+  ],
+  "orders": [
+    {"order_number": "HO-100231", "customer_email": "maya.lindqvist@example.com", "status": "shipped", "total": 189.00, "currency": "EUR",
+     "items": [{"sku": "PK-ALTA-55", "name": "Alta 55 L backpack", "qty": 1, "price": 189.00}],
+     "carrier": "DHL", "tracking_number": "JD014600003125589934", "placed_at": "2026-11-18T09:12:00+00:00", "shipped_at": "2026-11-19T15:40:00+00:00", "delivered_at": null},
+    {"order_number": "HO-100198", "customer_email": "maya.lindqvist@example.com", "status": "delivered", "total": 64.50, "currency": "EUR",
+     "items": [{"sku": "SK-MER-M", "name": "Merino hiking socks (2 pack)", "qty": 1, "price": 29.50}, {"sku": "BT-NALG-1L", "name": "Nalgene 1 L bottle", "qty": 1, "price": 35.00}],
+     "carrier": "PostNL", "tracking_number": "3SABCD123456789", "placed_at": "2026-10-30T18:03:00+00:00", "shipped_at": "2026-10-31T11:20:00+00:00", "delivered_at": "2026-11-02T13:05:00+00:00"},
+    {"order_number": "HO-100240", "customer_email": "tom.okafor@example.com", "status": "packed", "total": 329.00, "currency": "EUR",
+     "items": [{"sku": "TN-RIDGE-2", "name": "Ridge 2 person tent", "qty": 1, "price": 329.00}],
+     "carrier": null, "tracking_number": null, "placed_at": "2026-11-23T20:47:00+00:00", "shipped_at": null, "delivered_at": null},
+    {"order_number": "HO-100177", "customer_email": "tom.okafor@example.com", "status": "returned", "total": 149.00, "currency": "EUR",
+     "items": [{"sku": "JK-STORM-L", "name": "Storm shell jacket", "qty": 1, "price": 149.00}],
+     "carrier": "DHL", "tracking_number": "JD014600003125500001", "placed_at": "2026-10-12T10:00:00+00:00", "shipped_at": "2026-10-13T09:30:00+00:00", "delivered_at": "2026-10-15T12:00:00+00:00"},
+    {"order_number": "HO-100252", "customer_email": "sofia.ruiz@example.com", "status": "placed", "total": 89.90, "currency": "EUR",
+     "items": [{"sku": "HL-LUM-400", "name": "Lumen 400 headlamp", "qty": 1, "price": 59.90}, {"sku": "GL-TRK-M", "name": "Trek gloves", "qty": 1, "price": 30.00}],
+     "carrier": null, "tracking_number": null, "placed_at": "2026-11-25T07:15:00+00:00", "shipped_at": null, "delivered_at": null},
+    {"order_number": "HO-100205", "customer_email": "sofia.ruiz@example.com", "status": "cancelled", "total": 410.00, "currency": "EUR",
+     "items": [{"sku": "SB-ARC-0", "name": "Arctic 0 sleeping bag", "qty": 1, "price": 410.00}],
+     "carrier": null, "tracking_number": null, "placed_at": "2026-11-03T14:22:00+00:00", "shipped_at": null, "delivered_at": null}
+  ]
+}

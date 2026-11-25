@@ -170,6 +170,40 @@ def _markdown(summary: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def _models_used(c: Container) -> dict[str, str]:
+    return {
+        "provider": c.settings.llm_provider,
+        "answer": c.services.models.model_id("answer"),
+        "fast": c.services.models.model_id("router"),
+        "verifier": c.services.models.model_id("verifier"),
+        "embeddings": c.settings.embeddings_provider,
+        "reranker": c.settings.reranker,
+    }
+
+
+async def rescore_ragas(c: Container, report_dir: Path) -> dict[str, Any]:
+    """Compute (or recompute) the Ragas metrics for an existing report from its saved answers and contexts, so a
+    failed or skipped Ragas pass never costs a full regeneration run."""
+    from harbor.evals.ragas_eval import ragas_scores
+    from harbor.retrieval.embeddings import build_embeddings
+
+    rows = [
+        json.loads(line)
+        for line in (report_dir / "golden_rows.jsonl").read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    rows = [r for r in rows if r.get("answer")]
+    summary = json.loads((report_dir / "summary.json").read_text(encoding="utf-8"))
+    summary["ragas"] = await ragas_scores(c.settings, build_embeddings(c.settings), rows)
+    summary["ragas_models"] = _models_used(c)
+    (report_dir / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
+    (report_dir / "golden_rows.jsonl").write_text(
+        "\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8"
+    )
+    (report_dir / "report.md").write_text(_markdown(summary), encoding="utf-8")
+    return summary["ragas"]
+
+
 async def run_eval(
     c: Container, *, use_ragas: bool, use_redteam: bool, out_dir: Path, limit: int | None = None
 ) -> dict[str, Any]:
@@ -180,13 +214,7 @@ async def run_eval(
     summary: dict[str, Any] = {
         "ran_at": datetime.now(UTC).isoformat(timespec="seconds"),
         "mode": "offline" if c.engine is None else "postgres",
-        "models": {
-            "answer": c.settings.answer_model,
-            "fast": c.settings.fast_model,
-            "verifier": c.settings.verifier_model,
-        }
-        if c.settings.llm_provider != "fake"
-        else {"all": "fake"},
+        "models": _models_used(c),
         "prompt_versions": {
             p: prompt_version(p) for p in ("knowledge_agent", "router", "verifier", "injection_classifier")
         },

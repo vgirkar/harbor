@@ -38,8 +38,21 @@ class _RagasEmbeddings:
 
 def build_ragas_llm(settings: Settings):
     import instructor
-    from anthropic import AsyncAnthropic
     from ragas.llms import llm_factory
+
+    if settings.llm_provider == "openai_compatible":
+        from openai import AsyncOpenAI
+
+        client = AsyncOpenAI(base_url=settings.openai_compat_base_url, api_key=settings.openai_compat_api_key)
+        return llm_factory(
+            settings.openai_compat_verifier_model,
+            provider="openai",
+            client=client,
+            mode=instructor.Mode.JSON,
+            max_tokens=2048,
+        )
+
+    from anthropic import AsyncAnthropic
 
     client = AsyncAnthropic(api_key=settings.anthropic_api_key)
     return llm_factory(

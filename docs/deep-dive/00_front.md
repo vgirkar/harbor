@@ -7,7 +7,7 @@ subtitle: "Production RAG and multi-agent customer support assistant, text and v
 
 This document explains Harbor the way an interviewer will probe it: what it does, how the pieces fit, why each technology was chosen over its alternatives, how the database is integrated, how quality and safety are measured, and where the honest limits are. Every chapter ends with the questions an interviewer is likely to ask about that part and the short answer to give. The last chapters hold a question bank and the numbers worth memorising.
 
-**How to use it.** Read the sixty-second pitch and the snapshot table first. Then read chapters 5 (retrieval), 6 (the agent graph), 8 (injection defence) and 10 (evaluation); these are the four topics that get the deepest follow-ups. Say everything in the first person: I chose, I measured, I rejected. Where a number is marked "estimated" it was reasoned from token counts and vendor pricing, not measured in this build, and should be said that way.
+**How to use it.** Read the sixty-second pitch and the snapshot table first. Then read chapters 5 (retrieval), 6 (the agent graph), 8 (injection defence) and 10 (evaluation); these are the four topics that get the deepest follow-ups. Chapter 16 is the whole document in interview format: the questions that recur in online interview-question lists, answered in the first person with Harbor presented as the open-source reference implementation of the Optivaize RAG and agent stack. Say everything in the first person: I chose, I measured, I rejected. Where a number is marked "estimated" it was reasoned from token counts and vendor pricing, not measured in this build, and should be said that way.
 
 ## The sixty-second pitch
 

@@ -11,15 +11,15 @@ This document explains Harbor the way an interviewer will probe it: what it does
 
 ## The sixty-second pitch
 
-Harbor is a customer support assistant for an online outdoor gear store. A customer types or speaks a question; the system classifies it, blocks prompt-injection attempts, answers policy questions from a knowledge base with citations, looks up the customer's own orders through tools, or escalates to a human by opening a ticket. Policy answers are grounded by hybrid retrieval (dense vectors in pgvector plus Postgres full-text search, fused with Reciprocal Rank Fusion and reranked by a cross-encoder) and then checked by a second model that sends weak drafts back for a rewrite. The workflow is a LangGraph state machine with conversation memory checkpointed in Postgres. Quality is measured with a golden set, retrieval metrics, an LLM-as-judge rubric, Ragas, and a red-team suite, and the whole evaluation runs in CI in an offline mode that needs no API keys. It ships as a FastAPI service with API keys, rate limiting, streaming, structured logs, Alembic migrations, a Docker image and GitHub Actions.
+Harbor is a customer support assistant for an online outdoor gear store, and it runs on paid frontier models or entirely on free components. A customer types or speaks a question; the system classifies it, blocks prompt-injection attempts, answers policy questions from a knowledge base with citations, looks up the customer's own orders through tools, or escalates to a human by opening a ticket. Policy answers are grounded by hybrid retrieval (dense vectors in pgvector plus Postgres full-text search, fused with Reciprocal Rank Fusion and reranked by a cross-encoder) and then checked by a second model that sends weak drafts back for a rewrite. The workflow is a LangGraph state machine with conversation memory checkpointed in Postgres. Quality is measured with a golden set, retrieval metrics, an LLM-as-judge rubric, Ragas, and a red-team suite, and the whole evaluation runs in CI in an offline mode that needs no API keys. It ships as a FastAPI service with API keys, rate limiting, streaming, structured logs, Alembic migrations, a Docker image and GitHub Actions.
 
 ## Snapshot
 
 | | |
 |---|---|
-| Repository | github.com/vgirkar/harbor (public, MIT), featured on vgirkar.netlify.app |
+| Repository | github.com/vgirkar/harbor (public, MIT), featured on vgirkar.netlify.app; demo page at harbor-support.netlify.app |
 | Domain | Customer support for a fictional store, Harbor Outfitters: 8 policy documents, 3 customers, 6 orders |
-| Core stack | Python 3.11+, FastAPI, LangGraph 1.2, LangChain 1.5, Claude (Opus 5.5, Sonnet 5.5, Haiku 4.5), Voyage AI embeddings and reranker, Postgres 17 with pgvector, Pinecone adapter, ElevenLabs or OpenAI speech, Ragas 0.4 |
+| Core stack | Python 3.11+, FastAPI, LangGraph 1.2, LangChain 1.5, Claude (Opus 5.5, Sonnet 5.5, Haiku 4.5) or any OpenAI-compatible endpoint (Groq, Gemini, Ollama), Voyage AI or local fastembed embeddings and reranker, Postgres 17 with pgvector, Pinecone adapter, ElevenLabs or OpenAI speech, Ragas 0.4 |
 | Size | about 4,600 lines of Python across 9 packages, 10 versioned prompts, 30 automated tests, 1 Alembic migration |
 | Agents | guard, router, knowledge agent, verifier, order agent, escalation agent, small talk, finalizer |
 | Retrieval | dense top 20 + lexical top 20, RRF with k = 60, 24 candidates reranked to 6, relevance gate 0.15 |
@@ -27,7 +27,7 @@ Harbor is a customer support assistant for an online outdoor gear store. A custo
 | Evaluation | 18 golden questions, 14 red-team prompts (11 attacks, 3 benign controls), routing accuracy, hit@k, MRR, judge rubric, Ragas |
 | Offline results | routing 1.00, hit@3 0.93, MRR 0.87, judge pass 1.00, attacks blocked 11 of 11, leaks 0, benign false positives 0 |
 | Operations | API keys, token-bucket rate limit, request ids, structlog JSON logs, health and readiness probes, Docker multi-stage image (1.38 GB with eval extras), docker compose, CI with Postgres service |
-| Verified | unit and integration suites green locally and in GitHub Actions; Docker image boots against Postgres and answers; live providers not exercised in this build (no keys in the build environment) |
+| Verified | unit and integration suites green locally and in GitHub Actions; Docker image boots against Postgres and answers; the live path verified end to end with real models that need no key (Ollama qwen2.5:3b, fastembed bge-small embeddings, MiniLM cross-encoder reranker); the paid providers (Claude, Voyage, Pinecone, ElevenLabs) have adapters but were not exercised, no keys were available |
 
 ## What "production ready" means here
 

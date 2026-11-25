@@ -23,6 +23,21 @@ The guiding rule was to own as little as possible that a vendor does better, and
 | Config | pydantic-settings | python-dotenv, dynaconf | Typed, validated at import, one place to read |
 | Packaging and CI | pyproject with extras, ruff, pytest, Docker multi-stage, GitHub Actions with a pgvector service container | Poetry, tox | Minimal and standard; CI exercises the real database path |
 
+## The free route
+
+Every paid vendor has a free stand-in behind the same interface, selected by environment variable, so the system runs with no paid key at all and the paid providers become a configuration upgrade rather than a code change.
+
+| Role | Paid default | Free stand-in | How it is wired |
+|---|---|---|---|
+| LLM | Claude Opus 5.5 / Sonnet 5.5 / Haiku 4.5 | Any OpenAI-compatible endpoint: Groq free tier (Llama 3.3 70B, Llama 3.1 8B), Gemini's OpenAI endpoint, OpenRouter `:free` models, or Ollama on the laptop with no key | `LLM_PROVIDER=openai_compatible` builds `ChatOpenAI` with a base URL; structured output through tool calling by default, `json_schema` or `json_mode` by setting |
+| Embeddings | Voyage voyage-3.5 (1,024 dims) | fastembed `BAAI/bge-small-en-v1.5` (384 dims), quantised ONNX on CPU, 130 MB download | `EMBEDDINGS_PROVIDER=local`, `EMBEDDING_DIM=384` (the vector column takes its dimension from this) |
+| Reranker | Voyage rerank-2.5 | fastembed `Xenova/ms-marco-MiniLM-L-6-v2` cross-encoder, logits squashed with a sigmoid so the relevance gate sees 0 to 1 | `RERANKER=local` |
+| Vector index | pgvector (already free) | pgvector | unchanged |
+| Speech | ElevenLabs paid tiers | ElevenLabs free tier, or the fake provider that keeps the endpoint alive without audio | `SPEECH_PROVIDER` |
+| Evaluation LLM | Claude via instructor's Anthropic JSON mode | the same OpenAI-compatible endpoint via instructor's JSON mode | automatic from `LLM_PROVIDER` |
+
+I verified the free route end to end on a 2019 Intel laptop with Ollama `qwen2.5:3b`: a policy question went through guard, router, hybrid retrieval with the local embeddings and reranker, draft, verifier retry and citation validation in about two minutes (the CPU, not the design: Groq answers the same turn in seconds), an order question produced a correct tool call and answer, a copied jailbreak was blocked by the heuristics in 89 ms, and a benign question about injection reached the local classifier and was passed. The trade-off is quality: a 3B model's verifier is noisy and its router is less reliable than Haiku, which is exactly what the eval harness is for.
+
 ## Versions in the build
 
 langgraph 1.2.24, langchain 1.5.2, langchain-core 1.8.4, langchain-anthropic 1.7.12, anthropic SDK 2.14.0, ragas 0.4.4, instructor 1.3.2, pgvector 0.5.1, psycopg 3.3.9, SQLAlchemy 2.1.9, alembic 1.20.1, fastapi 0.165.0, pinecone 10.3.0, voyageai 0.6.0, structlog 26.1.0. Postgres image pgvector/pgvector:pg17. Python 3.11 locally, 3.12 in the Docker image.
@@ -35,7 +50,8 @@ langgraph 1.2.24, langchain 1.5.2, langchain-core 1.8.4, langchain-anthropic 1.7
 
 ### Likely interviewer probes
 
-- *Why not one vendor for everything?* Anthropic does not offer embeddings or reranking. Voyage is its recommended partner and gives both behind one key. The adapters make the choice reversible.
+- *Why not one vendor for everything?* Anthropic does not offer embeddings or reranking. Voyage is its recommended partner and gives both behind one key. The adapters make the choice reversible, and the local fastembed models remove the vendor entirely for embeddings and reranking.
+- *Can it run without any API key?* Yes: local embeddings and reranker through fastembed, an LLM through Ollama, Postgres in Docker. That is how the live path was verified in this build.
 - *Why pgvector over a dedicated vector database?* Operational simplicity and transactional consistency with the chunk text and metadata. I would move vectors out when the index no longer fits comfortably in Postgres memory or when query rate needs independent scaling, and the Pinecone adapter is that path.
 - *Why LangGraph rather than writing the state machine yourself?* Checkpointing, streaming of node events and the conditional-edge model are exactly the parts that are tedious and error prone to write. The nodes themselves are plain async functions, so the framework surface I depend on is small.
 - *What did you deliberately not use?* No agent framework that hides the loop (the order agent's tool loop is twenty lines I can read), no LangChain chains for prompting (prompts are markdown files rendered with two placeholders), no ORM magic in the hot path (the hybrid search is explicit SQL).

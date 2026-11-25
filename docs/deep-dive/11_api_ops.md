@@ -37,6 +37,10 @@ Everything is an environment variable with a typed default, listed in `.env.exam
 - **docker compose.** `db` (pgvector/pgvector:pg17 with a health check and a volume) and `api` (built from the Dockerfile, waits for the healthy database, reads `.env` if present).
 - **CI.** GitHub Actions: Python 3.12, a pgvector service container, ruff, the unit suite, the integration suite against the service, the offline eval, and the report uploaded as an artifact; a second job builds the Docker image. The run on the initial push was green in 3 minutes.
 
+## Hosting on free tiers
+
+Netlify hosts the demo page (https://harbor-support.netlify.app): a static site with a Backend URL box, deployed with `netlify deploy --prod --dir static`. Netlify cannot run a long-lived Python API with Postgres, so the API lives on a container host and the page talks to it across origins (the API's `CORS_ORIGINS` lists the Netlify site). The free combination documented in `deploy/HOSTING.md` is a Hugging Face Docker Space (16 GB RAM, persistent process, enough for the local models) or a Render free web service (`render.yaml` blueprint, 512 MB, sleeps when idle), Neon or Supabase for Postgres with pgvector, Groq for the LLM, and fastembed inside the container for embeddings and reranking. The Dockerfile accepts `--build-arg PRELOAD_LOCAL_MODELS=1` to bake the two ONNX models into the image so a cold start does not download them.
+
 ## Failure handling
 
 | Failure | Behaviour |
@@ -58,3 +62,4 @@ Horizontal: stateless containers behind a load balancer (state is in Postgres), 
 - *Why API keys and not OAuth?* The caller is a storefront or support tool, not an end user; machine-to-machine keys with constant-time comparison and per-key limits are the right tool. End-user identity arrives as the verified email from the caller.
 - *What would you add before a real launch?* Redis rate limiting, PII redaction in transcripts, prompt caching, alerting on guard block rate and verifier retry rate, a retention job for transcripts, and a staging environment running the real-model eval as a gate.
 - *How do you deploy a schema change?* Alembic migration in the same pull request, applied by the container at start; additive changes first, destructive ones in a later release.
+- *Why is the front end on Netlify and the API elsewhere?* Netlify's runtime is Node serverless with short execution limits and no database; a LangGraph turn needs a persistent Python process, a connection pool and pgvector. Splitting them is the normal shape: static front end on a CDN, API on a container host.

@@ -67,6 +67,8 @@ The API checks the key and rate limit and assigns a request id. The guard scores
 
 **What would you add before launch?** PII redaction, prompt caching, alerting on block and retry rates, retention, a staging real-model eval gate.
 
+**Can it run for free?** Yes. Local embeddings and reranker through fastembed, an OpenAI-compatible LLM (Groq free tier, or Ollama with no key), Postgres in Docker or on Neon's free tier, the page on Netlify. I verified that path end to end with Ollama; the paid providers are a configuration change.
+
 ## Behavioural angles
 
 **What was the hardest decision?** Shipping the second draft when the verifier still objects. Refusing is safer for the system and worse for the customer; I chose the customer and made the retry count a metric so the trade-off is visible.

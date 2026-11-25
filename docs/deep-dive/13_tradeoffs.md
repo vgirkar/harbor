@@ -17,8 +17,8 @@ Interviewers trust a candidate who names the weaknesses before being asked. Thes
 
 ## Limitations to state plainly
 
-- Not exercised against live Claude, Voyage, Pinecone or ElevenLabs in this build: no API keys were available in the build environment. The code paths are covered by the offline fakes and the integration suite; the real-provider run is the next step and the commands are in the README.
-- Offline eval numbers measure plumbing, not language quality.
+- The paid providers (Claude, Voyage, Pinecone, ElevenLabs) were not exercised in this build because no keys were available. The live path was verified with free components instead (Ollama, fastembed), which proves the integration code but not the quality the paid models would give; the command to run the eval with real keys is in the README.
+- Offline eval numbers measure plumbing, not language quality; the Ollama 3B numbers measure a small model, not the production configuration.
 - The golden set has 18 items and the attack set 14; both are seeds.
 - No PII redaction before storing transcripts; no retention job.
 - History is a fixed window of eight messages; very long threads need a summarisation node.
@@ -28,7 +28,7 @@ Interviewers trust a candidate who names the weaknesses before being asked. Thes
 
 ## Roadmap, in the order I would do it
 
-1. Run the real-model eval, record the baseline, and tune the relevance gate, top_k and chunk target against it.
+1. Run the eval with Groq (free) and then with Claude and Voyage, record both baselines, and tune the relevance gate, top_k and chunk target against them.
 2. Prompt caching on the system block; measure cache reads and cost per turn.
 3. Redis rate limiter and multi-replica deployment behind a load balancer.
 4. PII redaction and transcript retention; alerting on guard block rate, verifier retries and latency percentiles.
@@ -36,3 +36,4 @@ Interviewers trust a candidate who names the weaknesses before being asked. Thes
 6. Human-in-the-loop interrupt before actions with side effects (refunds, address changes) once write tools exist.
 7. Grow the golden and attack sets from production transcripts; nightly real-model eval as a release gate.
 8. Realtime voice front end for a phone channel, with Harbor as the backend.
+9. Deploy the API on the free host described in `deploy/HOSTING.md` and point the Netlify page at it.

@@ -1,6 +1,9 @@
 # Harbor
 
-Production-grade customer support assistant for an online store, built end to end:
+Production-grade customer support assistant for an online store, built end to end.
+
+![Harbor chat UI](docs/screenshot.png)
+
 
 - **RAG** with hybrid retrieval: pgvector (dense, HNSW) + Postgres full-text search, fused with Reciprocal Rank Fusion, then reranked (Voyage rerank-2.5, or an LLM reranker). Pinecone is a drop-in alternative index.
 - **Multi-agent workflow** on LangGraph: guard, router, knowledge agent, order agent (tool use), escalation agent, small talk, and a groundedness verifier that sends weak drafts back for a rewrite. Conversation memory is checkpointed in Postgres per thread.
@@ -9,6 +12,31 @@ Production-grade customer support assistant for an online store, built end to en
 - **Prompt-injection defence** in five layers: heuristic scoring, LLM classifier, document quarantine at ingestion, spotlighting of untrusted content, output guard (secret redaction, citation validation, prompt canary).
 - **Evaluation**: golden set with routing accuracy, retrieval hit rate and MRR, LLM-as-judge rubric, Ragas (faithfulness, answer relevancy, context precision and recall) and an injection red-team suite. Runs in CI in offline mode.
 - **Operations**: FastAPI with API keys, rate limiting, request ids, structured logs, health and readiness probes, Alembic migrations, Docker image, docker compose, GitHub Actions.
+
+## How a turn flows
+
+```mermaid
+flowchart LR
+    U[User text or voice] --> G[guard: heuristics + LLM classifier]
+    G -->|blocked| B[blocked reply]
+    G --> R[router: structured intent]
+    R -->|knowledge| K[knowledge agent: hybrid retrieval + grounded answer]
+    K --> V[verifier: groundedness judge]
+    V -->|not grounded, retry| K
+    V --> F[finalize: output guard, citations]
+    R -->|order| O[order agent: bounded tool loop]
+    R -->|escalate| E[escalation: ticket]
+    R -->|smalltalk| S[small talk]
+    O --> F
+    E --> F
+    S --> F
+    B --> F
+    F --> A[answer + citations, persisted and checkpointed]
+```
+
+Retrieval inside the knowledge agent: query embedding -> pgvector HNSW (or Pinecone) and Postgres full-text search in
+parallel -> Reciprocal Rank Fusion -> reranker (Voyage rerank-2.5 or Claude Haiku) -> relevance gate -> spotlighted
+`<document>` blocks with ids the model must cite.
 
 ## Quick start (no keys, no database)
 
@@ -54,6 +82,14 @@ seeds/          sample customers and orders
 tests/          unit (offline) and integration (Postgres) suites
 ```
 
+## Verified state
+
+Unit suite (27 tests, offline) and integration suite (3 tests, real Postgres with pgvector) pass locally and in
+GitHub Actions. The Docker image boots against the compose database and serves answers. Offline eval on the bundled
+golden set: routing accuracy 1.0, retrieval hit@3 0.93, judge pass rate 1.0, red team block rate 11/11 with 0 benign
+false positives. The scripted offline model proves the plumbing, not answer quality: run `make eval` with real keys for
+quality numbers.
+
 ## Tests and evals
 
 ```bash
@@ -75,3 +111,7 @@ make eval                 # full run with Claude, Voyage and Ragas; reports in e
 | POST | /v1/ingest/upload | admin | ingest uploaded markdown/text |
 | POST | /v1/ingest/reindex | admin | push all vectors to the external index |
 | GET | /healthz, /readyz | none | probes |
+
+## Documentation
+
+`docs/Harbor_Technical_Deep_Dive.docx` explains every design decision, the alternatives that were rejected, the database integration and the evaluation method, written as interview deep-dive material. Sources and build script in `docs/deep-dive/`.

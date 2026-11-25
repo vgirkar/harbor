@@ -50,7 +50,7 @@ The same harness ran against the free route on the laptop: Ollama `qwen2.5:3b` f
 
 Two things this run proved that the offline run could not: the whole stack works with real models and real embeddings end to end, and the metrics discriminate, since they moved in the directions a small model predicts. The headline numbers to quote are therefore the retrieval ones (which are model-independent at this corpus size) and the red-team ones; the answer-quality numbers need the Groq or Claude run.
 
-Ragas on the free route works but is slow on a laptop CPU: faithfulness and context recall each take two to five minutes per item with the 3B model (both scored 1.0 on the support-hours question in a sanity check). The runner therefore has a `rescore` command that computes Ragas for an existing report from its saved answers and contexts, optionally on a subset, so a Ragas pass never costs a regeneration run and can be scheduled separately on a hosted model.
+Ragas on the free route works but is slow on a laptop CPU (two to five minutes per metric per item with the 3B model), so the runner has a `rescore` command that computes Ragas for an existing report from its saved answers and contexts, optionally on a subset. Rescoring the first four policy items of the local run gave faithfulness 0.75, answer relevancy 0.61, context precision 0.90 and context recall 0.88. Read together with the deterministic metrics they tell a consistent story: retrieval is strong (precision 0.90, recall 0.88 agree with hit@3 1.00), and the weak spots are the small writer's faithfulness and relevance, which is where the verifier retries came from. The report with every row is in `docs/eval-reports/`.
 
 ## What the offline numbers do and do not mean
 

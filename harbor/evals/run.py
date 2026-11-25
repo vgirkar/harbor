@@ -192,6 +192,8 @@ async def rescore_ragas(c: Container, report_dir: Path, limit: int | None = None
         for line in (report_dir / "golden_rows.jsonl").read_text(encoding="utf-8").splitlines()
         if line.strip()
     ]
+    for r in rows:
+        r.pop("ragas", None)  # drop results of an earlier pass so unscored rows carry nothing stale
     scored = [r for r in rows if r.get("answer") and r.get("contexts")][:limit]
     summary = json.loads((report_dir / "summary.json").read_text(encoding="utf-8"))
     summary["ragas"] = await ragas_scores(c.settings, build_embeddings(c.settings), scored)

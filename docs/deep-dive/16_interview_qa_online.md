@@ -116,7 +116,7 @@ Offline is the golden set and red team on every change. Online is the verifier r
 Eighteen questions written from the documents with reference answers and expected source documents, plus fourteen red-team prompts. That is a seed; a regression-grade set is 50 to 100 items grown from production failures, and I say that when asked.
 
 **What did your evaluation actually show?**
-Offline with the scripted model: routing 1.0, hit@3 0.93, 11 of 11 attacks blocked. With real free models (a 3B local LLM, local embeddings and reranker): retrieval found the right document first on every question that reached it, the red team held at 11 of 11 with no benign false positives, while routing dropped to 0.83 and the judge pass rate to 0.07, which is the small model and exactly what the metrics are for.
+Offline with the scripted model: routing 1.0, hit@3 0.93, 11 of 11 attacks blocked. With real free models (a 3B local LLM, local embeddings and reranker): retrieval found the right document first on every question that reached it, the red team held at 11 of 11 with no benign false positives, while routing dropped to 0.83 and the judge pass rate to 0.07, which is the small model and exactly what the metrics are for. Ragas on a subset agreed: context precision 0.90 and recall 0.88, faithfulness 0.75 and answer relevancy 0.61.
 
 ## Prompt injection and safety
 

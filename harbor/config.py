@@ -28,7 +28,16 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://harbor:harbor@localhost:5432/harbor"
 
     # LLM
-    llm_provider: Literal["anthropic", "fake"] = "anthropic"
+    llm_provider: Literal["anthropic", "openai_compatible", "fake"] = "anthropic"
+    # OpenAI-compatible endpoint: Groq, Gemini (OpenAI endpoint), OpenRouter, Cerebras, Ollama, vLLM ...
+    openai_compat_base_url: str = "http://localhost:11434/v1"
+    openai_compat_api_key: str = "ollama"
+    openai_compat_answer_model: str = "qwen2.5:3b"
+    openai_compat_fast_model: str = "qwen2.5:3b"
+    openai_compat_verifier_model: str = "qwen2.5:3b"
+    openai_compat_structured_method: Literal["function_calling", "json_schema", "json_mode"] = (
+        "function_calling"
+    )
     anthropic_api_key: str | None = None
     answer_model: str = "claude-opus-5-5"
     fast_model: str = "claude-haiku-4-5"
@@ -37,7 +46,8 @@ class Settings(BaseSettings):
     answer_max_tokens: int = 1500
 
     # Embeddings
-    embeddings_provider: Literal["voyage", "openai", "fake"] = "voyage"
+    embeddings_provider: Literal["voyage", "openai", "local", "fake"] = "voyage"
+    local_embedding_model: str = "BAAI/bge-small-en-v1.5"  # 384 dims, runs on CPU through fastembed (ONNX)
     voyage_api_key: str | None = None
     embedding_model: str = "voyage-3.5"
     embedding_dim: int = 1024
@@ -51,7 +61,8 @@ class Settings(BaseSettings):
     pinecone_namespace: str = "default"
 
     # Retrieval
-    reranker: Literal["voyage", "llm", "none"] = "voyage"
+    reranker: Literal["voyage", "local", "llm", "none"] = "voyage"
+    local_rerank_model: str = "Xenova/ms-marco-MiniLM-L-6-v2"  # cross-encoder through fastembed
     rerank_model: str = "rerank-2.5"
     dense_top_k: int = 20
     lexical_top_k: int = 20

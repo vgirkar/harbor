@@ -39,6 +39,7 @@ dependencies = [
 [project.optional-dependencies]
 evals = ["ragas>=0.4", "instructor>=1.7"]
 openai = ["langchain-openai>=0.3"]
+free = ["fastembed>=0.4", "langchain-openai>=0.3"]
 dev = [
   "pytest>=8.2",
   "pytest-asyncio>=0.23",

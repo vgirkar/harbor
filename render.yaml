@@ -1,0 +1,46 @@
+# Render blueprint: one Docker web service. Pair it with a free Postgres that has pgvector (Neon or Supabase)
+# and a free LLM endpoint (Groq). See deploy/HOSTING.md. The free plan sleeps after 15 minutes idle.
+services:
+  - type: web
+    name: harbor-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: DATABASE_URL
+        sync: false                      # postgresql+psycopg://user:pass@host/db?sslmode=require
+      - key: API_KEYS
+        sync: false
+      - key: ADMIN_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        value: https://harbor-support.netlify.app
+      - key: APP_ENV
+        value: prod
+      - key: LLM_PROVIDER
+        value: openai_compatible
+      - key: OPENAI_COMPAT_BASE_URL
+        value: https://api.groq.com/openai/v1
+      - key: OPENAI_COMPAT_API_KEY
+        sync: false
+      - key: OPENAI_COMPAT_ANSWER_MODEL
+        value: llama-3.3-70b-versatile
+      - key: OPENAI_COMPAT_FAST_MODEL
+        value: llama-3.1-8b-instant
+      - key: OPENAI_COMPAT_VERIFIER_MODEL
+        value: llama-3.3-70b-versatile
+      - key: EMBEDDINGS_PROVIDER
+        value: local
+      - key: EMBEDDING_DIM
+        value: "384"
+      - key: RERANKER
+        value: local
+      - key: VECTOR_BACKEND
+        value: pgvector
+      - key: SPEECH_PROVIDER
+        value: fake                      # set elevenlabs + ELEVENLABS_API_KEY for real voice
+      - key: FASTEMBED_CACHE_PATH
+        value: /app/.cache/fastembed

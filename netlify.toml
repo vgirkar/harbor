@@ -1,0 +1,11 @@
+# Netlify hosts the static demo page; the API runs on a container host (see deploy/HOSTING.md).
+[build]
+  publish = "static"
+  command = "echo static site, nothing to build"
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"

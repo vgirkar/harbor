@@ -29,7 +29,14 @@ from harbor.ingest.loader import load_path
 from harbor.ingest.pipeline import QUARANTINE_THRESHOLD
 from harbor.retrieval.embeddings import FakeEmbeddings, build_embeddings
 from harbor.retrieval.fusion import reciprocal_rank_fusion
-from harbor.retrieval.rerank import FakeReranker, LLMReranker, NoopReranker, Reranker, VoyageReranker
+from harbor.retrieval.rerank import (
+    FakeReranker,
+    LLMReranker,
+    LocalReranker,
+    NoopReranker,
+    Reranker,
+    VoyageReranker,
+)
 from harbor.retrieval.types import RetrievedChunk
 from harbor.retrieval.vector_index import build_vector_index
 from harbor.voice.speech import FakeSpeech, SpeechProvider, build_speech
@@ -271,6 +278,8 @@ def build_reranker(settings: Settings, models: ModelFactory) -> Reranker:
         if not settings.voyage_api_key:
             raise RuntimeError("RERANKER=voyage requires VOYAGE_API_KEY")
         return VoyageReranker(settings.voyage_api_key, settings.rerank_model)
+    if settings.reranker == "local":
+        return LocalReranker(settings.local_rerank_model)
     if settings.reranker == "llm":
         from harbor.prompts import load_prompt
 

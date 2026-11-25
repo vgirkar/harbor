@@ -2,11 +2,13 @@
 
 voyage  : Voyage AI (Anthropic's recommended embeddings partner), asymmetric query/document inputs
 openai  : text-embedding-3-small, optional extra
+local   : fastembed (ONNX on CPU, no key): BAAI/bge-small-en-v1.5 by default, 384 dims, free
 fake    : deterministic hashed bag-of-words vectors so the whole pipeline runs offline in tests and demos
 """
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import math
 import re
@@ -52,6 +54,23 @@ class OpenAIEmbeddings:
 
     async def embed_query(self, text: str) -> list[float]:
         return await self._client.aembed_query(text)
+
+
+class LocalEmbeddings:
+    """fastembed runs quantised ONNX models on CPU; the first call downloads the model (~130 MB)."""
+
+    def __init__(self, model: str, dim: int):
+        from fastembed import TextEmbedding
+
+        self.model_name = model
+        self.dim = dim
+        self._model = TextEmbedding(model)
+
+    async def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        return await asyncio.to_thread(lambda: [v.tolist() for v in self._model.embed(texts, batch_size=32)])
+
+    async def embed_query(self, text: str) -> list[float]:
+        return await asyncio.to_thread(lambda: next(iter(self._model.query_embed(text))).tolist())
 
 
 class FakeEmbeddings:
@@ -101,4 +120,6 @@ def build_embeddings(settings: Settings) -> EmbeddingsProvider:
         return OpenAIEmbeddings(
             settings.openai_api_key, settings.openai_embedding_model, settings.embedding_dim
         )
+    if settings.embeddings_provider == "local":
+        return LocalEmbeddings(settings.local_embedding_model, settings.embedding_dim)
     return FakeEmbeddings(settings.embedding_dim)

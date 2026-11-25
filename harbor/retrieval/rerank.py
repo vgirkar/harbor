@@ -2,13 +2,15 @@
 passage together and produces a far better top-6 than either bi-encoder similarity or BM25 alone.
 
 voyage : rerank-2.5 (hosted cross-encoder)
-llm    : Claude Haiku scores each candidate 0-10 in one listwise call (no extra vendor, slower, pricier)
+local  : fastembed cross-encoder (Xenova/ms-marco-MiniLM-L-6-v2) on CPU, no key, free
+llm    : a small chat model scores each candidate 0-10 in one listwise call (no extra vendor, slower, pricier)
 none   : keep the fused order (useful as a baseline in evals)
 """
 
 from __future__ import annotations
 
 import asyncio
+import math
 import re
 from typing import Protocol
 
@@ -57,6 +59,27 @@ class VoyageReranker:
             chunk.score = float(r.relevance_score)
             out.append(chunk)
         return out
+
+
+class LocalReranker:
+    """MiniLM cross-encoder through fastembed. Logits are squashed with a sigmoid so the relevance gate sees 0..1."""
+
+    name = "local"
+
+    def __init__(self, model: str):
+        from fastembed.rerank.cross_encoder import TextCrossEncoder
+
+        self._model = TextCrossEncoder(model)
+
+    async def rerank(self, query: str, candidates: list[RetrievedChunk], top_n: int) -> list[RetrievedChunk]:
+        if not candidates:
+            return []
+        logits = await asyncio.to_thread(
+            lambda: list(self._model.rerank(query, [c.content for c in candidates]))
+        )
+        for c, logit in zip(candidates, logits, strict=True):
+            c.score = 1.0 / (1.0 + math.exp(-float(logit)))
+        return sorted(candidates, key=lambda c: -c.score)[:top_n]
 
 
 class _Scores(BaseModel):

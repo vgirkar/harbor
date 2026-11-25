@@ -12,7 +12,7 @@ from typing import Any
 from langchain_core.messages import AIMessage, BaseMessage, HumanMessage, SystemMessage, ToolMessage
 from langchain_core.runnables import RunnableConfig
 
-from harbor.agents.models import ModelFactory
+from harbor.agents.models import ModelFactory, StructuredOutputError
 from harbor.agents.schemas import GroundingVerdict, InjectionVerdict, RouteDecision, TicketSummary
 from harbor.agents.services import OrderService, Retriever, TicketService
 from harbor.agents.state import AgentState
@@ -101,13 +101,23 @@ def build_nodes(svc: Services) -> dict[str, Node]:
         else:
             ask_llm = s.guard_llm_mode == "always" or (s.guard_llm_mode == "uncertain" and h.score >= 0.3)
             if ask_llm:
-                verdict: InjectionVerdict = await svc.models.structured("guard", InjectionVerdict).ainvoke(
-                    [SystemMessage(load_prompt("injection_classifier")), HumanMessage(text)], config
-                )
-                decision["llm"] = verdict.model_dump()
-                decision["decided_by"] = "llm"
-                if verdict.is_injection and verdict.confidence >= threshold:
-                    decision.update(blocked=True, category=verdict.category)
+                try:
+                    verdict: InjectionVerdict = await svc.models.ainvoke_structured(
+                        "guard",
+                        InjectionVerdict,
+                        [SystemMessage(load_prompt("injection_classifier")), HumanMessage(text)],
+                        config,
+                    )
+                    decision["llm"] = verdict.model_dump()
+                    decision["decided_by"] = "llm"
+                    if verdict.is_injection and verdict.confidence >= threshold:
+                        decision.update(blocked=True, category=verdict.category)
+                except StructuredOutputError as exc:
+                    # fail closed on the uncertain band: the heuristics alone decide, at the LLM threshold
+                    decision["llm"] = {"error": str(exc)[:200]}
+                    decision["decided_by"] = "heuristic_fallback"
+                    if h.score >= threshold:
+                        decision.update(blocked=True, category=h.category)
             elif s.guard_llm_mode == "never" and h.score >= threshold:
                 decision.update(blocked=True, category=h.category)
         if decision["blocked"]:
@@ -125,9 +135,15 @@ def build_nodes(svc: Services) -> dict[str, Node]:
         prompt = (
             f"Previous turns:\n{transcript or '(none)'}\n\nLatest customer message:\n{state['user_input']}"
         )
-        decision: RouteDecision = await svc.models.structured("router", RouteDecision).ainvoke(
-            [SystemMessage(load_prompt("router")), HumanMessage(prompt)], config
-        )
+        try:
+            decision: RouteDecision = await svc.models.ainvoke_structured(
+                "router", RouteDecision, [SystemMessage(load_prompt("router")), HumanMessage(prompt)], config
+            )
+        except StructuredOutputError as exc:
+            log.warning("router.fallback", error=str(exc)[:200])
+            decision = RouteDecision(
+                intent="knowledge", confidence=0.0, reason="router unavailable, defaulted"
+            )
         intent = decision.intent if decision.confidence >= 0.4 else "knowledge"
         log.info("router.decided", intent=intent, confidence=decision.confidence, reason=decision.reason)
         return {"route": intent, "route_confidence": decision.confidence, "trace": ["router"]}
@@ -180,9 +196,20 @@ def build_nodes(svc: Services) -> dict[str, Node]:
             f"Customer question: {state['user_input']}\n\n{render_documents(relevant)}\n\n"
             f"Draft answer:\n{state['draft']}"
         )
-        verdict: GroundingVerdict = await svc.models.structured("verifier", GroundingVerdict).ainvoke(
-            [SystemMessage(load_prompt("verifier")), HumanMessage(human)], config
-        )
+        try:
+            verdict: GroundingVerdict = await svc.models.ainvoke_structured(
+                "verifier",
+                GroundingVerdict,
+                [SystemMessage(load_prompt("verifier")), HumanMessage(human)],
+                config,
+            )
+        except StructuredOutputError as exc:
+            # ship the draft rather than fail the turn; the output guard still validates citations
+            log.warning("verifier.fallback", error=str(exc)[:200])
+            return {
+                "verdict": {"grounded": True, "score": 0.0, "skipped": "verifier unavailable"},
+                "trace": ["verifier"],
+            }
         log.info(
             "verifier.verdict", grounded=verdict.grounded, score=verdict.score, attempts=state.get("attempts")
         )
@@ -237,13 +264,19 @@ def build_nodes(svc: Services) -> dict[str, Node]:
         transcript = "\n".join(
             f"{'Customer' if isinstance(m, HumanMessage) else 'Assistant'}: {m.content}" for m in convo[-6:]
         )
-        summary: TicketSummary = await svc.models.structured("summary", TicketSummary).ainvoke(
-            [
-                SystemMessage(load_prompt("ticket_summary")),
-                HumanMessage(f"{transcript}\nCustomer: {state['user_input']}"),
-            ],
-            config,
-        )
+        try:
+            summary: TicketSummary = await svc.models.ainvoke_structured(
+                "summary",
+                TicketSummary,
+                [
+                    SystemMessage(load_prompt("ticket_summary")),
+                    HumanMessage(f"{transcript}\nCustomer: {state['user_input']}"),
+                ],
+                config,
+            )
+        except StructuredOutputError as exc:
+            log.warning("escalate.fallback", error=str(exc)[:200])
+            summary = TicketSummary(summary=state["user_input"][:800], priority="normal")
         conv_id = uuid.UUID(state["conversation_id"]) if state.get("conversation_id") else None
         ticket_id = await svc.tickets.create(
             conversation_id=conv_id,

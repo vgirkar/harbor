@@ -30,6 +30,7 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
     judged = [r for r in rows if r.get("judge")]
     return {
         "n": len(rows),
+        "errors": sum(1 for r in rows if r.get("error") or r.get("judge_error")),
         "routing_accuracy": safe_mean([1.0 if r["intent"] == r["expected_intent"] else 0.0 for r in rows]),
         "retrieval_hit_at_3": safe_mean([r.get("hit_at_3") for r in rows]),
         "retrieval_hit_at_6": safe_mean([r.get("hit_at_6") for r in rows]),

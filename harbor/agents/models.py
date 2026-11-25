@@ -6,11 +6,18 @@ from __future__ import annotations
 from typing import Literal
 
 from langchain_core.language_models import BaseChatModel
-from langchain_core.runnables import Runnable
+from langchain_core.runnables import Runnable, RunnableConfig
 
 from harbor.config import Settings
+from harbor.logging import get_logger
 
 Role = Literal["answer", "router", "guard", "verifier", "rerank", "order", "summary", "judge"]
+log = get_logger(__name__)
+
+
+class StructuredOutputError(RuntimeError):
+    """The model did not produce a valid instance of the requested schema after the allowed attempts."""
+
 
 _NO_FORCED_TOOL_CHOICE = ("claude-opus-5", "claude-sonnet-5", "claude-fable", "claude-mythos")
 _SUPPORTS_EFFORT = ("claude-opus-5", "claude-sonnet-5", "claude-opus-4-7", "claude-opus-4-8", "claude-fable")
@@ -56,6 +63,36 @@ class ModelFactory:
             return model.with_structured_output(schema, method=self._s.openai_compat_structured_method)
         model_id, _, _ = _model_for_role(self._s, role)
         return model.with_structured_output(schema, method=structured_method(model_id))
+
+    async def ainvoke_structured(
+        self,
+        role: Role,
+        schema: type,
+        messages: list,
+        config: RunnableConfig | None = None,
+        attempts: int = 2,
+    ):
+        """Invoke a structured-output model with retries. Small or flaky models sometimes return an empty tool
+        call or malformed JSON; a second attempt with a corrective note fixes most of those. Raises
+        StructuredOutputError when every attempt fails so the caller can apply a safe default."""
+        runnable = self.structured(role, schema)
+        last: Exception | None = None
+        for attempt in range(1, attempts + 1):
+            try:
+                return await runnable.ainvoke(messages, config)
+            except Exception as exc:  # pydantic ValidationError, OutputParserException, provider errors
+                last = exc
+                log.warning("structured.retry", role=role, attempt=attempt, error=str(exc)[:200])
+                if attempt < attempts:
+                    from langchain_core.messages import HumanMessage
+
+                    messages = [
+                        *messages,
+                        HumanMessage(
+                            "Your previous reply was not valid. Fill in every field of the schema with a value."
+                        ),
+                    ]
+        raise StructuredOutputError(f"{role}: {last}") from last
 
     def model_id(self, role: Role) -> str:
         if self._s.llm_provider == "fake":

@@ -27,7 +27,35 @@ def _load(name: str) -> list[dict[str, Any]]:
 async def run_golden(c: Container, limit: int | None = None) -> list[dict[str, Any]]:
     rows = []
     for item in _load("golden.jsonl")[:limit]:
-        result = await c.runtime.run_turn(message=item["question"], customer_email=item.get("customer_email"))
+        try:
+            result = await c.runtime.run_turn(
+                message=item["question"], customer_email=item.get("customer_email")
+            )
+        except Exception as exc:  # keep the run alive; the row records the failure
+            log.error("eval.item.failed", id=item["id"], error=str(exc)[:300])
+            rows.append(
+                {
+                    "id": item["id"],
+                    "question": item["question"],
+                    "expected_intent": item["intent"],
+                    "intent": "error",
+                    "answer": "",
+                    "reference": item["reference"],
+                    "expected_source": item.get("expected_source"),
+                    "retrieved_sources": [],
+                    "contexts": [],
+                    "citations": [],
+                    "hit_at_3": None,
+                    "hit_at_6": None,
+                    "mrr": None,
+                    "attempts": None,
+                    "trace": [],
+                    "latency_ms": 0,
+                    "judge": None,
+                    "error": str(exc)[:300],
+                }
+            )
+            continue
         sources = [r["source"] for r in result.retrieved]
         row: dict[str, Any] = {
             "id": item["id"],
@@ -65,7 +93,24 @@ async def run_golden(c: Container, limit: int | None = None) -> list[dict[str, A
 async def run_redteam(c: Container) -> dict[str, Any]:
     rows = []
     for attack in _load("attacks.jsonl"):
-        result = await c.runtime.run_turn(message=attack["message"])
+        try:
+            result = await c.runtime.run_turn(message=attack["message"])
+        except Exception as exc:
+            log.error("eval.attack.failed", id=attack["id"], error=str(exc)[:300])
+            rows.append(
+                {
+                    "id": attack["id"],
+                    "category": attack["category"],
+                    "benign": attack.get("benign", False),
+                    "blocked": False,
+                    "decided_by": "error",
+                    "heuristic_score": None,
+                    "leaked": False,
+                    "answer": "",
+                    "error": str(exc)[:300],
+                }
+            )
+            continue
         blocked = bool(result.guard.get("blocked")) or result.intent == "blocked"
         leaked = CANARY in result.answer or "DAN enabled" in result.answer
         rows.append(

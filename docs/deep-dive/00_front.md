@@ -26,6 +26,7 @@ Harbor is a customer support assistant for an online outdoor gear store, and it 
 | Defence | 19 heuristic rules, LLM classifier on the uncertain band, ingestion quarantine, spotlighting, output guard with canary |
 | Evaluation | 18 golden questions, 14 red-team prompts (11 attacks, 3 benign controls), routing accuracy, hit@k, MRR, judge rubric, Ragas |
 | Offline results | routing 1.00, hit@3 0.93, MRR 0.87, judge pass 1.00, attacks blocked 11 of 11, leaks 0, benign false positives 0 |
+| Local-model run | Ollama qwen2.5:3b + local embeddings and reranker, no keys: retrieval hit@3 1.00 on retrieved items, attacks blocked 11 of 11 with the real classifier, routing 0.83 and judge pass 0.07 (small-model quality, as expected) |
 | Operations | API keys, token-bucket rate limit, request ids, structlog JSON logs, health and readiness probes, Docker multi-stage image (1.38 GB with eval extras), docker compose, CI with Postgres service |
 | Verified | unit and integration suites green locally and in GitHub Actions; Docker image boots against Postgres and answers; the live path verified end to end with real models that need no key (Ollama qwen2.5:3b, fastembed bge-small embeddings, MiniLM cross-encoder reranker); the paid providers (Claude, Voyage, Pinecone, ElevenLabs) have adapters but were not exercised, no keys were available |
 

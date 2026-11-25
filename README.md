@@ -38,6 +38,28 @@ Retrieval inside the knowledge agent: query embedding -> pgvector HNSW (or Pinec
 parallel -> Reciprocal Rank Fusion -> reranker (Voyage rerank-2.5 or Claude Haiku) -> relevance gate -> spotlighted
 `<document>` blocks with ids the model must cite.
 
+## Hosted demo page
+
+The chat page is live at https://harbor-support.netlify.app. Netlify serves the static front end; the API runs on a
+container host you point the page at (Backend URL box). `deploy/HOSTING.md` lists a fully free hosting combination
+(Hugging Face Spaces or Render for the API, Neon or Supabase for Postgres with pgvector, Groq for the LLM).
+
+## Run it for free, no paid keys
+
+```bash
+pip install -e ".[free]"            # fastembed (local embeddings + cross-encoder reranker) and the OpenAI-compatible client
+# LLM: any OpenAI-compatible endpoint. Free options: Groq, Gemini (OpenAI endpoint), OpenRouter :free models,
+# or Ollama on your machine with no key at all (ollama pull qwen2.5:3b).
+EMBEDDING_DIM=384 EMBEDDINGS_PROVIDER=local RERANKER=local LLM_PROVIDER=openai_compatible \
+OPENAI_COMPAT_BASE_URL=http://localhost:11434/v1 OPENAI_COMPAT_API_KEY=ollama \
+make db migrate seed ingest serve
+```
+
+Verified on 25 Nov 2026 with Ollama `qwen2.5:3b`, `BAAI/bge-small-en-v1.5` embeddings and the
+`Xenova/ms-marco-MiniLM-L-6-v2` reranker on a 2019 Intel laptop: a policy question ran guard, router, hybrid
+retrieval, draft, verifier retry and citation validation end to end (about 2 minutes per turn on that CPU; a hosted
+free LLM such as Groq answers in seconds).
+
 ## Quick start (no keys, no database)
 
 ```bash
@@ -111,6 +133,16 @@ make eval                 # full run with Claude, Voyage and Ragas; reports in e
 | POST | /v1/ingest/upload | admin | ingest uploaded markdown/text |
 | POST | /v1/ingest/reindex | admin | push all vectors to the external index |
 | GET | /healthz, /readyz | none | probes |
+
+## Providers
+
+| Role | Options (env) | Free choice |
+|---|---|---|
+| LLM | `LLM_PROVIDER=anthropic` (Claude Opus 5.5 / Sonnet 5.5 / Haiku 4.5), `openai_compatible` (Groq, Gemini, OpenRouter, Ollama, vLLM), `fake` | Groq free tier or Ollama |
+| Embeddings | `EMBEDDINGS_PROVIDER=voyage`, `openai`, `local` (fastembed bge-small, 384 dims), `fake` | local |
+| Reranker | `RERANKER=voyage` (rerank-2.5), `local` (MiniLM cross-encoder), `llm`, `none` | local |
+| Vector index | `VECTOR_BACKEND=pgvector`, `pinecone` | pgvector |
+| Speech | `SPEECH_PROVIDER=elevenlabs`, `openai`, `fake` | ElevenLabs free tier |
 
 ## Documentation
 
